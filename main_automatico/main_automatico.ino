@@ -7,7 +7,7 @@ const int pulsador_marcha = 4;
 const int pulsador_parada = 16;
 const int pulsador_emergencia = 5;
 
-// Entradas Llaves Selectoras
+// Entradas Llave Selectora
 const int selectora_automatico = 17;
 
 // Entradas Potenciómetros
@@ -19,7 +19,7 @@ const int testigo_modo = 18;
 
 // Salidas Potencia
 const int valvula_prensa = 21;
-const int motor_y_testigo = 19; // <-- Pin 19 unificado para motor y luz de marcha
+const int motor_y_testigo = 19;
 
 // --- VARIABLES ---
 
@@ -33,10 +33,11 @@ unsigned long tiempoParpadeo = 0;
 bool estadoModo = false;
 
 // Variables para los tiempos
-unsigned long tiempo_espera_1 =  2000; // 
-unsigned long tiempo_prensa = 1000;
-unsigned long tiempo_motor = 1000;
-unsigned long tiempo_espera_2 = 2000;
+unsigned long tiempo_espera_1 =  2000; // ajustar en código
+unsigned long tiempo_prensa = 1000; // ajustar con potenciometro
+unsigned long tiempo_motor = 1000; // ajustar con potenciometro
+unsigned long tiempo_espera_2 = 2000; // ajustar en código
+unsigned long tiempo_luz = 1000; // ajustar en código
 
 // Variables del proceso
 unsigned long estampas_completadas = 0; 
@@ -47,7 +48,7 @@ void IRAM_ATTR manejarEmergencia() {
     emergenciaActivada = true; 
     
     // APAGADO CRÍTICO
-    digitalWrite(valvula_prensa, HIGH);
+    digitalWrite(valvula_prensa, HIGH); // HIGH es False, LOW es True
     digitalWrite(motor_y_testigo, HIGH);
   } else {
     emergenciaActivada = false; 
@@ -56,6 +57,7 @@ void IRAM_ATTR manejarEmergencia() {
 
 // Setup de los Pines
 void setup() {
+
   // Inicializar
   Serial.begin(115200);
 
@@ -72,7 +74,7 @@ void setup() {
   pinMode(valvula_prensa, OUTPUT);
   pinMode(motor_y_testigo, OUTPUT);
 
-  // Iniciar apagado
+  // Iniciar todo en False
   digitalWrite(testigo_modo, HIGH);
   digitalWrite(valvula_prensa, HIGH);
   digitalWrite(motor_y_testigo, HIGH);
@@ -83,6 +85,7 @@ void setup() {
 
 // Loop
 void loop() {
+  
   // Monitoreo Serial
   Serial.print("Marcha:");
   Serial.print(digitalRead(pulsador_marcha));
@@ -137,7 +140,7 @@ void loop() {
 
   // Gestionar parpadeo
   if (pasoActual != 0 && modoAutomatico) {
-    if (tiempoActual - tiempoParpadeo >= 1500) {
+    if (tiempoActual - tiempoParpadeo >= tiempo_luz) {
       tiempoParpadeo = tiempoActual;
       estadoModo = !estadoModo;
       analogWrite(testigo_modo, estadoModo ? 255: 0);
