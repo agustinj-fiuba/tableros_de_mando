@@ -143,10 +143,10 @@ void loop() {
   Serial.print(estampas_completadas);
   Serial.print(",");
   Serial.print("Motor:");
-  Serial.print(motor_y_testigo);
+  Serial.print(digitalRead(motor_y_testigo));
   Serial.print(",");
   Serial.print("Prensa:");
-  Serial.println(valvula_prensa);
+  Serial.println(digitalRead(valvula_prensa));
 
   // Determino el tiempo
   unsigned long tiempoActual = millis();
