@@ -5,11 +5,11 @@
 // Entradas Pulsadores
 const int pulsador_marcha = 4; 
 const int pulsador_parada = 16;
-const int pulsador_emergencia = 5;
-const int pulsador_pedal = 18;
+const int pulsador_emergencia = 18;
 
 // Entradas Llave Selectora
 const int selectora_automatico = 17;
+const int selectora_ciclado = 5;
 
 // Entradas Potenciómetros
 const int pot_prensa = 34; 
@@ -26,12 +26,15 @@ const int motor_y_testigo = 21;
 
 // Variables Máquina de Estados
 volatile bool emergenciaActivada = false;
-int pasoActual = 0; // 0=Reposo, 1=Espera, 2=Prensa, 3=Espera, 4=Motor
+int pasoActual = 0; // -1=Manual, 0=Reposo, 1=Espera, 2=Prensa, 3=Espera, 4=Motor
 unsigned long tiempoAnterior = 0;
 volatile bool parada = true;
-bool modoAutomatico = false;
-unsigned long tiempoParpadeo = 0;
+volatile bool modoAutomatico = false; // 0
+volatile bool modoCiclado = false; // 1
+volatile bool modoManual = false; // 2
+int modoSeleccionado = 0;
 bool estadoModo = false;
+unsigned long tiempoParpadeo = 0;
 
 // Variables para los tiempos
 unsigned long tiempo_espera_1 =  2000; // ajustar en código
@@ -56,6 +59,26 @@ void IRAM_ATTR manejarEmergencia() {
   }
 }
 
+int chequeo_modo(bool pos1, bool pos2) {
+  modoAutomatico = false;
+  modoManual = false;
+  modoCiclado = false;
+  int valor = 0;
+  if (pos1 && pos2) {
+    modoManual = true;
+    valor = 2;
+  }
+  else if (pos1 && !pos2) {
+    modoCiclado = true;
+    valor = 1;
+  }
+  else {
+    modoAutomatico = true;
+    valor = 0;
+  }
+  return valor;
+}
+
 // Setup de los Pines
 void setup() {
 
@@ -67,7 +90,7 @@ void setup() {
   pinMode(pulsador_parada, INPUT);
   pinMode(pulsador_emergencia, INPUT);
   pinMode(selectora_automatico, INPUT);
-  pinMode(pulsador_pedal, INPUT);
+  pinMode(selectora_ciclado, INPUT);
   pinMode(pot_prensa, INPUT);
   pinMode(pot_motor, INPUT);
 
@@ -80,6 +103,9 @@ void setup() {
   digitalWrite(testigo_modo, HIGH);
   digitalWrite(valvula_prensa, HIGH);
   digitalWrite(motor_y_testigo, HIGH);
+
+  // Iniciar Modo Seleccionado
+  modoSeleccionado = chequeo_modo(digitalRead(selectora_automatico), digitalRead(selectora_ciclado));
 
   // Adjuntar interrupción
   attachInterrupt(digitalPinToInterrupt(pulsador_emergencia), manejarEmergencia, CHANGE);
@@ -126,30 +152,30 @@ void loop() {
     return; 
   }
 
-  // --- 2. LECTURA DE MODO AUTOMÁTICO ---
-  if (digitalRead(selectora_automatico) == HIGH) {
+  // --- 2. LECTURA DEL MODO ---
+  int temp_modo = chequeo_modo(digitalRead(selectora_automatico), digitalRead(selectora_ciclado));
+
+  if (modoSeleccionado != temp_modo) {
     parada = true;
-    pasoActual = 0;
     digitalWrite(valvula_prensa, HIGH);
     digitalWrite(motor_y_testigo, HIGH);
-    modoAutomatico = false;
-    analogWrite(testigo_modo, modoAutomatico ? 0 : 255);
+    analogWrite(testigo_modo, modoManual ? 0 : 255);
+    if (temp_modo == 2) {
+      pasoActual = -1;
+    }
+    else {
+      pasoActual = 0;
+    }
   }
-  else if (pasoActual == 0) {
-    modoAutomatico = true;
-    analogWrite(testigo_modo, modoAutomatico ? 0 : 255);
-  }
+  modoSeleccionado = temp_modo;
 
-  // Gestionar parpadeo
-  if (pasoActual != 0 && modoAutomatico) {
+  // Gestionar Testigo Modo
+  if (pasoActual != 0 && (modoAutomatico || modoCiclado)) {
     if (tiempoActual - tiempoParpadeo >= tiempo_luz) {
       tiempoParpadeo = tiempoActual;
       estadoModo = !estadoModo;
       analogWrite(testigo_modo, estadoModo ? 255: 0);
     }
-  }
-  else {
-    analogWrite(testigo_modo, modoAutomatico ? 0 : 255);
   }
 
   // --- 3. LECTURA DE PARADA NORMAL ---
@@ -159,9 +185,18 @@ void loop() {
   }
 
   // --- 4. MÁQUINA DE ESTADOS ---
-  
+  // ESTADO -1: Manual
+  if (pasoActual == -1) {
+    if ((digitalRead(pulsador_marcha) == LOW && modoManual)) {
+      digitalWrite(motor_y_testigo, LOW); // Encendido Motor
+    }
+    else if (parada == true) {
+      digitalWrite(motor_y_testigo, HIGH); // Apagado Motor
+    }
+  }
+
   // ESTADO 0: Reposo
-  if (pasoActual == 0) {
+  else if (pasoActual == 0) {
     if ((digitalRead(pulsador_marcha) == LOW && modoAutomatico) || (parada == false && modoAutomatico)) {
       parada = false;
       tiempo_prensa = map(analogRead(pot_prensa), 0, 4095, 1000, 5000);
@@ -171,7 +206,7 @@ void loop() {
       tiempoAnterior = tiempoActual;   
       delay(200); 
     }
-    else if ((digitalRead(pulsador_pedal) == LOW && modoAutomatico)) {
+    else if ((digitalRead(pulsador_marcha) == LOW && modoCiclado)) {
       parada = true;
       tiempo_prensa = map(analogRead(pot_prensa), 0, 4095, 1000, 5000);
       tiempo_motor = map(analogRead(pot_motor), 0, 4095, 1000, 5000);
