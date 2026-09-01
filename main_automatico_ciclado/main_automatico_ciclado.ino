@@ -121,8 +121,11 @@ void loop() {
   Serial.print("Parada:");
   Serial.print(digitalRead(pulsador_parada));
   Serial.print(",");
-  Serial.print("Selectora:");
+  Serial.print("Selectora 1:");
   Serial.print(digitalRead(selectora_automatico));
+  Serial.print(",");
+  Serial.print("Selectora 2:");
+  Serial.print(digitalRead(selectora_ciclado));
   Serial.print(",");
   Serial.print("Emergencia:");
   Serial.print(digitalRead(pulsador_emergencia));
@@ -137,7 +140,13 @@ void loop() {
   Serial.print(tiempo_prensa);
   Serial.print(",");
   Serial.print("Estampas:");
-  Serial.println(estampas_completadas);
+  Serial.print(estampas_completadas);
+  Serial.print(",");
+  Serial.print("Motor:");
+  Serial.print(motor_y_testigo);
+  Serial.print(",");
+  Serial.print("Prensa:");
+  Serial.println(valvula_prensa);
 
   // Determino el tiempo
   unsigned long tiempoActual = millis();
