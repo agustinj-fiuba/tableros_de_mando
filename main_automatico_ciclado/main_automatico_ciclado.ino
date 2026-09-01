@@ -5,21 +5,21 @@
 // Entradas Pulsadores
 const int pulsador_marcha = 4; 
 const int pulsador_parada = 16;
-const int pulsador_emergencia = 18;
+const int pulsador_emergencia = 5;
 
 // Entradas Llave Selectora
 const int selectora_automatico = 17;
-const int selectora_ciclado = 5;
+const int selectora_ciclado = 22;
 
 // Entradas Potenciómetros
 const int pot_prensa = 34; 
 const int pot_motor = 35;
 
 // Salidas Testigos
-const int testigo_modo = 19;
+const int testigo_modo = 18;
 
 // Salidas Potencia
-const int valvula_prensa = 22;
+const int valvula_prensa = 19;
 const int motor_y_testigo = 21;
 
 // --- VARIABLES ---
@@ -166,16 +166,20 @@ void loop() {
     else {
       pasoActual = 0;
     }
+    delay(200);
   }
   modoSeleccionado = temp_modo;
 
   // Gestionar Testigo Modo
-  if (pasoActual != 0 && (modoAutomatico || modoCiclado)) {
+  if (pasoActual != 0 && !modoManual) {
     if (tiempoActual - tiempoParpadeo >= tiempo_luz) {
       tiempoParpadeo = tiempoActual;
       estadoModo = !estadoModo;
       analogWrite(testigo_modo, estadoModo ? 255: 0);
     }
+  }
+  else {
+    analogWrite(testigo_modo, modoManual ? 0: 255);
   }
 
   // --- 3. LECTURA DE PARADA NORMAL ---
@@ -187,12 +191,13 @@ void loop() {
   // --- 4. MÁQUINA DE ESTADOS ---
   // ESTADO -1: Manual
   if (pasoActual == -1) {
-    if ((digitalRead(pulsador_marcha) == LOW && modoManual)) {
+    if (digitalRead(pulsador_marcha) == LOW && modoManual) {
       digitalWrite(motor_y_testigo, LOW); // Encendido Motor
     }
     else if (parada == true) {
       digitalWrite(motor_y_testigo, HIGH); // Apagado Motor
     }
+    delay(200);
   }
 
   // ESTADO 0: Reposo
@@ -204,7 +209,6 @@ void loop() {
       
       pasoActual = 1;              
       tiempoAnterior = tiempoActual;   
-      delay(200); 
     }
     else if ((digitalRead(pulsador_marcha) == LOW && modoCiclado)) {
       parada = true;
@@ -213,8 +217,8 @@ void loop() {
       
       pasoActual = 1;              
       tiempoAnterior = tiempoActual;   
-      delay(200); 
     }
+    delay(200);
   }
 
   // ESTADO 1: Tiempo de Carga/Espera
